@@ -129,50 +129,50 @@ function App() {
 
       console.log('MESSAGES FOR OAI', messages);
 
-      // const response = await openai.chat.completions.create({
-      //   model: 'gpt-4-vision-preview',
-      //   max_tokens: 100,
-      //   messages: messages,
-      // });
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4-vision-preview',
+        max_tokens: 100,
+        messages: messages,
+      });
 
-      // textToSpeech(response.choices[0].message.content!);
+      textToSpeech(response.choices[0].message.content!);
 
-      // console.log(chatHistory);
+      console.log(chatHistory);
 
-      // const systemPrompt: ChatCompletionSystemMessageParam =
-      //   chatHistory.length < 1
-      //     ? {
-      //         role: 'system',
-      //         content: `You are a friendly companion. You're objective is to be helpful and assist. These are frames of a video. Do not refer to frames as independent images, Respond to the user request. The frames provide time-based content, but I do not want you to refer to the time or to the sequence. Refer to what is, so only the most recent image/last image. Answer in a single sentence as simple as possible. Keep the language simple. If it is a drawing, do not comment on the surface, only the drawing.`,
-      //       }
-      //     : {
-      //         role: 'system',
-      //         content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple.`,
-      //       };
+      const systemPrompt: ChatCompletionSystemMessageParam =
+        chatHistory.length < 1
+          ? {
+              role: 'system',
+              content: `You are a friendly companion. You're objective is to be helpful and assist. These are frames of a video. Do not refer to frames as independent images, Respond to the user request. The frames provide time-based content, but I do not want you to refer to the time or to the sequence. Refer to what is, so only the most recent image/last image. Answer in a single sentence as simple as possible. Keep the language simple. If it is a drawing, do not comment on the surface, only the drawing.`,
+            }
+          : {
+              role: 'system',
+              content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple.`,
+            };
 
-      // // First add the chat history, then for the latest response add the following:
-      // // - system prompt: similar to above, it's the primary prompt for the first oai request, otherwise the secondary prompt
-      // // - text input: the user's question
-      // // - last 20 frames: the frames context for the video stream
-      // // - response: the response from the oai request
-      // setChatHistory(prevChatHistory => [
-      //   ...prevChatHistory,
-      //   systemPrompt,
-      //   {
-      //     role: 'user',
-      //     content: [
-      //       {
-      //         type: 'text',
-      //         text: textInput,
-      //       },
-      //       ...last20FramesInArray,
-      //       // last20FramesInArray[last10SecondsInFrames.length - 1],
-      //     ],
-      //   } as ChatCompletionUserMessageParam,
-      //   response.choices[0].message!,
-      // ]);
+      // First add the chat history, then for the latest response add the following:
+      // - system prompt: similar to above, it's the primary prompt for the first oai request, otherwise the secondary prompt
+      // - text input: the user's question
+      // - last 20 frames: the frames context for the video stream
+      // - response: the response from the oai request
+      setChatHistory(prevChatHistory => [
+        ...prevChatHistory,
+        systemPrompt,
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: textInput,
+            },
+            ...last20FramesInArray,
+            // last20FramesInArray[last10SecondsInFrames.length - 1],
+          ],
+        } as ChatCompletionUserMessageParam,
+        response.choices[0].message!,
+      ]);
 
-      // console.log(response);
+      console.log(response);
     } catch (error) {
       console.error('Error sending images to server:', error);
     }
