@@ -12,7 +12,7 @@ import {
 } from 'openai/resources/index.mjs';
 import 'regenerator-runtime/runtime';
 import SpeechRecognition, {
-  useSpeechRecognition,
+  useSpeechRecognition,//@ts-ignore
 } from 'react-speech-recognition';
 
 type Messages = (
@@ -66,6 +66,7 @@ function App() {
   };
 
   const beginCaptures = () => {
+    //@ts-ignore
     captureRef.current = setInterval(() => {
       capture();
     }, 500);
