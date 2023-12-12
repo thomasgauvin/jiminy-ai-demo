@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import './App.css';
 import OpenAI from 'openai';
@@ -7,7 +7,7 @@ import SpeechRecognition, {
   useSpeechRecognition, //@ts-ignore
 } from 'react-speech-recognition';
 
-const OAI_INITIAL_SYSTEM_PROMPT: OpenAI.ChatCompletionSystemMessageParam = {
+const OAI_INITIAL_SYSTEM_PROMPT = {
   role: 'system',
   content: `You are a friendly companion. 
     Your objective is to be helpful and assist. 
@@ -19,40 +19,47 @@ const OAI_INITIAL_SYSTEM_PROMPT: OpenAI.ChatCompletionSystemMessageParam = {
     If it is a drawing, do not comment on the surface, only the drawing.`,
 };
 
-const OAI_USER_REQUEST_SYSTEM_PROMPT: OpenAI.ChatCompletionSystemMessageParam =
+const OAI_USER_REQUEST_SYSTEM_PROMPT =
   {
     role: 'system',
     content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple.`,
   };
 
-type Messages = (
-  | OpenAI.ChatCompletionAssistantMessageParam
-  | OpenAI.ChatCompletionSystemMessageParam
-  | OpenAI.ChatCompletionUserMessageParam
-  | OpenAI.ChatCompletionMessage
-)[];
-
 function App() {
-  const webcamRef = useRef<Webcam>(null);
-  const captureRef = useRef<NodeJS.Timeout | undefined>();
-  const [oaiKey, setOaiKey] = useState<string | undefined>(
+  const webcamRef = useRef(null);
+  const captureRef = useRef();
+  const [oaiKey, setOaiKey] = useState(
     localStorage.getItem('openai-key') || undefined,
   );
-  const [chatHistory, setChatHistory] = useState<Messages>([]);
-  const [last10SecondsInFrames, setLast10SecondsInFrames] = useState<string[]>(
+  const [chatHistory, setChatHistory] = useState([]);
+  const [last10SecondsInFrames, setLast10SecondsInFrames] = useState(
     [],
   );
-  const [textInput, setTextInput] = useState<string>('');
-  const chatHistoryHtmlContainerRef = useRef<HTMLDivElement>(null);
-  const videoConstraints = {
-    facingMode: {
-      exact: 'environment',
-    }
-  }
 
+
+
+  const [textInput, setTextInput] = useState('');
+  const chatHistoryHtmlContainerRef = useRef(null);
+  const [deviceId, setDeviceId] = useState({});
+  const [devices, setDevices] = useState([]);
+  
   useEffect(() => {
     beginCaptures();
   }, []);
+
+
+  const handleDevices = useCallback(
+    mediaDevices =>
+      setDevices(mediaDevices.filter(({ kind }) => kind === "videoinput")),
+    [setDevices]
+  );
+
+  useEffect(
+    () => {
+      navigator.mediaDevices.enumerateDevices().then(handleDevices);
+    },
+    [handleDevices]
+  );
 
   const {
     transcript,
@@ -61,11 +68,13 @@ function App() {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
+
   if (!browserSupportsSpeechRecognition) {
     alert(
       "Your browser doesn't support speech recognition. Please try another browser.",
     );
   }
+
 
   useEffect(() => {
     setTextInput(transcript);
@@ -102,7 +111,7 @@ function App() {
         dangerouslyAllowBrowser: true,
       });
 
-      const last20FramesInArray: OpenAI.ChatCompletionContentPart[] =
+      const last20FramesInArray =
         last10SecondsInFrames.map(image => ({
           type: 'image_url',
           image_url: {
@@ -111,7 +120,7 @@ function App() {
           },
         }));
 
-      let messages: Messages = [];
+      let messages = [];
 
       // messages is passed into the oai request as context
       // Provide an initial prompt for the first oai request, otherwise provide the chat history as context
@@ -138,7 +147,7 @@ function App() {
         },
       ];
 
-      const systemPrompt: OpenAI.ChatCompletionSystemMessageParam =
+      const systemPrompt =
         chatHistory.length < 1
           ? OAI_INITIAL_SYSTEM_PROMPT
           : OAI_USER_REQUEST_SYSTEM_PROMPT;
@@ -156,7 +165,7 @@ function App() {
             // ...last20FramesInArray,
             last20FramesInArray[last10SecondsInFrames.length - 1],
           ],
-        } as OpenAI.ChatCompletionUserMessageParam,
+        },
       ]);
 
       const response = await openai.chat.completions.create({
@@ -165,7 +174,7 @@ function App() {
         messages: messages,
       });
 
-      textToSpeech(response.choices[0].message.content!);
+      textToSpeech(response.choices[0].message.content);
 
       console.log(chatHistory);
 
@@ -177,7 +186,7 @@ function App() {
 
       setChatHistory(prevChatHistory => [
         ...prevChatHistory,
-        response.choices[0].message!,
+        response.choices[0].message,
       ]);
 
       console.log(response);
@@ -189,7 +198,7 @@ function App() {
     }
   };
 
-  const textToSpeech = async (inputText: string) => {
+  const textToSpeech = async (inputText) => {
     try {
       const openai = new OpenAI({
         apiKey: oaiKey,
@@ -234,7 +243,7 @@ function App() {
   }, []);
 
 
-  function constructMessages(messages: Messages) {
+  function constructMessages(messages) {
     return messages.map(message => {
       switch (message.role) {
         case 'system':
@@ -307,14 +316,30 @@ function App() {
       </div>
       {/* Video feed */}
       <div className="flex-1 flex flex-col lg:flex-row">
-        <div id="webcam" className='lg:w-1/2 bg-gray-200 p-4 flex items-center justify-center'>
+        <div id="webcam" className='lg:w-1/2 bg-gray-200 p-4 flex flex-col items-center justify-center'>
             <Webcam
               style={{ borderRadius: 16 }}
               className='max-h-72 lg:max-h-full'
               ref={webcamRef}
               mirrored={false}
-              videoConstraints={videoConstraints}
+              videoConstraints={{
+                deviceId: deviceId
+              }}
             />
+            <button
+              type="button"
+              className="mt-2 text-white bg-slate-700 hover:bg-slate-800 focus:ring-4 focus:ring-slate-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+              onClick={() => {
+                //onclick set the device to the next camera
+                const index = devices.findIndex(d => d.deviceId === deviceId);
+                const nextIndex = index + 1;
+                const nextDevice = devices[nextIndex % devices.length];
+                setDeviceId(nextDevice);
+              }}
+            >
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-switch-camera"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+
+            </button>
 
         </div>
         <div id="chat" className='lg:w-1/2 bg-gray-300 h-full relative'>
