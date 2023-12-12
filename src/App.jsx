@@ -21,7 +21,7 @@ const OAI_INITIAL_SYSTEM_PROMPT = {
 
 const OAI_USER_REQUEST_SYSTEM_PROMPT = {
   role: 'system',
-  content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple.`,
+  content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple, but explain your answer.`,
 };
 
 function App() {
@@ -32,7 +32,7 @@ function App() {
     localStorage.getItem('openai-key') || undefined,
   );
   const [chatHistory, setChatHistory] = useState([]);
-  const [last10SecondsInFrames, setLast10SecondsInFrames] = useState([]);
+  const [videoFrames, setVideoFrames] = useState([]);
   const [textInput, setTextInput] = useState('');
   const [deviceId, setDeviceId] = useState({});
   const [devices, setDevices] = useState([]);
@@ -52,8 +52,6 @@ function App() {
         localStorage.setItem('openai-key', key);
       }
     }
-
-    beginCaptures();
   }, []);
 
   const handleDevices = useCallback(
@@ -79,7 +77,9 @@ function App() {
   const capture = () => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
-      setLast10SecondsInFrames(prevImages => {
+      setVideoFrames(prevImages => {
+
+        //max of 20 frames, 10 seconds (frames are captured every 500ms)
         if (prevImages.length >= 20) {
           //keeping only last 10 seconds
           return [...prevImages.slice(1), imageSrc];
@@ -96,9 +96,9 @@ function App() {
     }, 500);
   };
 
-  // const stopCaptures = () => {
-  //   clearInterval(captureRef.current);
-  // };
+  const stopCaptures = () => {
+    clearInterval(captureRef.current);
+  };
 
   const sendImagesToServer = async () => {
     try {
@@ -108,7 +108,7 @@ function App() {
         dangerouslyAllowBrowser: true,
       });
 
-      const last20FramesInArray = last10SecondsInFrames.map(image => ({
+      const last20FramesInArray = videoFrames.map(image => ({
         type: 'image_url',
         image_url: {
           url: image,
@@ -158,8 +158,7 @@ function App() {
               type: 'text',
               text: textInput,
             },
-            // ...last20FramesInArray,
-            last20FramesInArray[last10SecondsInFrames.length - 1],
+            last20FramesInArray[videoFrames.length - 1], //don't pass all images in chat history to avoid unnecessary openai usage
           ],
         },
       ]);
@@ -218,6 +217,10 @@ function App() {
         chatHistoryHtmlContainerRef.current.scrollHeight;
     }
   }, [chatHistory]);
+
+  function clearCaptures(){
+    setVideoFrames([]);
+  }
 
   function constructMessages(messages) {
     return messages.map(message => {
@@ -282,7 +285,6 @@ function App() {
                               </svg>
                             </div>
                           </div>
-                          {/* <img className='rounded-md' width={50} src={item.image_url.url} alt="image" /> */}
                         </div>
                       );
                     }
@@ -311,7 +313,7 @@ function App() {
         >
           <Webcam
             style={{ borderRadius: 16 }}
-            className="max-h-72 lg:max-h-full"
+            className="max-h-60 lg:max-h-full"
             ref={webcamRef}
             mirrored={false}
             videoConstraints={{
@@ -372,11 +374,11 @@ function App() {
             >
               {constructMessages(chatHistory)}
               {loadingOAIResponse ? (
-                <div class="text-center m-4">
+                <div className="text-center m-4">
                   <div role="status">
                     <svg
                       aria-hidden="true"
-                      class="inline w-10 h-10 text-gray-200 animate-spin fill-blue-700"
+                      className="inline w-10 h-10 text-gray-200 animate-spin fill-blue-700"
                       viewBox="0 0 100 101"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
@@ -390,7 +392,7 @@ function App() {
                         fill="currentFill"
                       />
                     </svg>
-                    <span class="sr-only">Loading...</span>
+                    <span className="sr-only">Loading...</span>
                   </div>
                 </div>
               ) : null}
@@ -402,9 +404,11 @@ function App() {
               <button
                 type="button"
                 className="focus:outline-none text-white bg-yellow-400 hover:bg-yellow-500 focus:ring-4 focus:ring-yellow-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:focus:ring-yellow-900"
-                onClick={() => {
+                onClick={async () => {
                   SpeechRecognition.stopListening();
-                  sendImagesToServer();
+                  stopCaptures();
+                  await sendImagesToServer();
+                  clearCaptures();
                 }}
               >
                 Stop recording
@@ -416,6 +420,7 @@ function App() {
                 onClick={() => {
                   resetTranscript();
                   SpeechRecognition.startListening({ continuous: true });
+                  beginCaptures();
                 }}
                 disabled={loadingOAIResponse}
               >
@@ -427,89 +432,6 @@ function App() {
       </div>
     </div>
   );
-
-  // return (
-  //   <div className="m-12 text-center">
-  //     <div className="flex flex-row">
-  //       <div className="basis-6/12">
-  //         <div className="flex flex-col items-center">
-  //           <h1 className="text-3xl font-bold">Stream</h1>
-  //           <Webcam height={600} width={600} ref={webcamRef} mirrored={false} />
-  //           <div className="mt-4">
-  //             <button onClick={capture} className="mr-10">
-  //               Snap a single photo
-  //             </button>
-  //             <button
-  //               onClick={beginCaptures}
-  //               className="border-orange-500 mr-10"
-  //             >
-  //               Start
-  //             </button>
-  //             <button onClick={stopCaptures} className="mr-10">
-  //               Stop
-  //             </button>
-  //             <button onClick={sendImagesToServer} className="mr-10">
-  //               Send images to server
-  //             </button>
-  //             <button
-  //               onClick={() => setLast10SecondsInFrames([])}
-  //               className="mr-10"
-  //             >
-  //               Clear
-  //             </button>
-  //             <button onClick={() => setChatHistory([])}>
-  //               Clear chat history
-  //             </button>
-  //           </div>
-  //         </div>
-  //         <div className="mt-8">
-  //           <p>Microphone: {listening ? 'on' : 'off'}</p>
-  //           <button
-  //             className="mr-4"
-  //             onClick={() =>
-  //               SpeechRecognition.startListening({ continuous: true })
-  //             }
-  //           >
-  //             Start
-  //           </button>
-  //           <button
-  //             className="mr-4"
-  //             onClick={() => {
-  //               SpeechRecognition.stopListening();
-  //               // sendImagesToServer();
-  //             }}
-  //           >
-  //             Stop
-  //           </button>
-  //           <button onClick={resetTranscript}>Reset</button>
-  //           <p>{transcript}</p>
-  //         </div>
-  //         <div className="my-4  border-solid border-2 border-indigo-600 ">
-  //           <textarea
-  //             value={textInput}
-  //             onChange={e => setTextInput(e.target.value)}
-  //             placeholder="Enter your request"
-  //           ></textarea>
-  //         </div>
-  //         <div className="mt-12">
-  //           <h1 className="text-3xl font-bold">Captured photos</h1>
-  //           {last10SecondsInFrames.length}
-  //           <div className="flex flex-wrap">
-  //             {last10SecondsInFrames.map((image, index) => (
-  //               <div key={index} className="m-2">
-  //                 <img width={100} src={image} alt="photo taken" />
-  //               </div>
-  //             ))}
-  //           </div>
-  //         </div>
-  //       </div>
-  //       <div className="basis-6/12">
-  //         <h1 className="text-3xl">Chat history</h1>
-  //         {constructMessages(chatHistory)}
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
 }
 
 export default App;
