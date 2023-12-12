@@ -3,38 +3,44 @@ import Webcam from 'react-webcam';
 import './App.css';
 import { useRef } from 'react';
 import OpenAI from 'openai';
-import {
-  ChatCompletionAssistantMessageParam,
-  ChatCompletionContentPart,
-  ChatCompletionMessage,
-  ChatCompletionSystemMessageParam,
-  ChatCompletionUserMessageParam,
-} from 'openai/resources/index.mjs';
 import 'regenerator-runtime/runtime';
 import SpeechRecognition, {
-  useSpeechRecognition,//@ts-ignore
+  useSpeechRecognition, //@ts-ignore
 } from 'react-speech-recognition';
 
+const OAI_INITIAL_SYSTEM_PROMPT: OpenAI.ChatCompletionSystemMessageParam = {
+  role: 'system',
+  content: `You are a friendly companion. Your objective is to be helpful and assist. These are frames of a video. Do not refer to frames as independent images, Respond to the user request. Answer in a single sentence as simple as possible. Keep the language simple. If it is a drawing, do not comment on the surface, only the drawing.`,
+};
+
+const OAI_USER_REQUEST_SYSTEM_PROMPT: OpenAI.ChatCompletionSystemMessageParam =
+  {
+    role: 'system',
+    content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple.`,
+  };
+
 type Messages = (
-  | ChatCompletionAssistantMessageParam
-  | ChatCompletionSystemMessageParam
-  | ChatCompletionUserMessageParam
-  | ChatCompletionMessage
+  | OpenAI.ChatCompletionAssistantMessageParam
+  | OpenAI.ChatCompletionSystemMessageParam
+  | OpenAI.ChatCompletionUserMessageParam
+  | OpenAI.ChatCompletionMessage
 )[];
 
 function App() {
   const webcamRef = useRef<Webcam>(null);
-  const captureRef = useRef<number | undefined>();
+  const captureRef = useRef<NodeJS.Timeout | undefined>();
   const [oaiKey, setOaiKey] = useState<string | undefined>(
     localStorage.getItem('openai-key') || undefined,
   );
   const [chatHistory, setChatHistory] = useState<Messages>([]);
-
   const [last10SecondsInFrames, setLast10SecondsInFrames] = useState<string[]>(
     [],
   );
-
   const [textInput, setTextInput] = useState<string>('');
+
+  useEffect(() => {
+    beginCaptures();
+  }, []);
 
   const {
     transcript,
@@ -44,7 +50,9 @@ function App() {
   } = useSpeechRecognition();
 
   if (!browserSupportsSpeechRecognition) {
-    alert("Browser doesn't support speech recognition.");
+    alert(
+      "Your browser doesn't support speech recognition. Please try another browser.",
+    );
   }
 
   useEffect(() => {
@@ -66,7 +74,6 @@ function App() {
   };
 
   const beginCaptures = () => {
-    //@ts-ignore
     captureRef.current = setInterval(() => {
       capture();
     }, 500);
@@ -77,14 +84,13 @@ function App() {
   };
 
   const sendImagesToServer = async () => {
-    console.log('ayoooo');
     try {
       const openai = new OpenAI({
         apiKey: oaiKey,
         dangerouslyAllowBrowser: true,
       });
 
-      const last20FramesInArray: ChatCompletionContentPart[] =
+      const last20FramesInArray: OpenAI.ChatCompletionContentPart[] =
         last10SecondsInFrames.map(image => ({
           type: 'image_url',
           image_url: {
@@ -96,26 +102,18 @@ function App() {
       let messages: Messages = [];
 
       // messages is passed into the oai request as context
-      // Provide the primary prompt for the first oai request, otherwise provide the chat history as context
+      // Provide an initial prompt for the first oai request, otherwise provide the chat history as context
       if (chatHistory.length < 1) {
-        messages = [
-          {
-            role: 'system',
-            content: `You are a friendly companion. Your objective is to be helpful and assist. These are frames of a video. Do not refer to frames as independent images, Respond to the user request. Answer in a single sentence as simple as possible. Keep the language simple. If it is a drawing, do not comment on the surface, only the drawing.`,
-          },
-        ];
+        messages = [OAI_INITIAL_SYSTEM_PROMPT];
       } else {
         messages = [...chatHistory];
       }
 
-      // Add a secondary prompt for each oai request
+      // Add a prompt for the user's request for each oai request
       // Construct the user text input and image frames for oai
       messages = [
         ...messages,
-        {
-          role: 'system',
-          content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple.`,
-        },
+        OAI_USER_REQUEST_SYSTEM_PROMPT,
         {
           role: 'user',
           content: [
@@ -128,8 +126,6 @@ function App() {
         },
       ];
 
-      console.log('MESSAGES FOR OAI', messages);
-
       const response = await openai.chat.completions.create({
         model: 'gpt-4-vision-preview',
         max_tokens: 100,
@@ -140,16 +136,10 @@ function App() {
 
       console.log(chatHistory);
 
-      const systemPrompt: ChatCompletionSystemMessageParam =
+      const systemPrompt: OpenAI.ChatCompletionSystemMessageParam =
         chatHistory.length < 1
-          ? {
-              role: 'system',
-              content: `You are a friendly companion. You're objective is to be helpful and assist. These are frames of a video. Do not refer to frames as independent images, Respond to the user request. The frames provide time-based content, but I do not want you to refer to the time or to the sequence. Refer to what is, so only the most recent image/last image. Answer in a single sentence as simple as possible. Keep the language simple. If it is a drawing, do not comment on the surface, only the drawing.`,
-            }
-          : {
-              role: 'system',
-              content: `Respond to the user using as little text as possible. Provide a single sentence response, and keep the language simple.`,
-            };
+          ? OAI_INITIAL_SYSTEM_PROMPT
+          : OAI_USER_REQUEST_SYSTEM_PROMPT;
 
       // First add the chat history, then for the latest response add the following:
       // - system prompt: similar to above, it's the primary prompt for the first oai request, otherwise the secondary prompt
@@ -166,10 +156,10 @@ function App() {
               type: 'text',
               text: textInput,
             },
-            ...last20FramesInArray,
-            // last20FramesInArray[last10SecondsInFrames.length - 1],
+            // ...last20FramesInArray,
+            last20FramesInArray[last10SecondsInFrames.length - 1],
           ],
-        } as ChatCompletionUserMessageParam,
+        } as OpenAI.ChatCompletionUserMessageParam,
         response.choices[0].message!,
       ]);
 
@@ -238,7 +228,7 @@ function App() {
             return <div>{message.content}</div>;
           } else {
             const content = (
-              message.content as ChatCompletionContentPart[]
+              message.content as OpenAI.ChatCompletionContentPart[]
             ).map(item => {
               if (item.type === 'text') {
                 return (
@@ -256,6 +246,54 @@ function App() {
       }
     });
   }
+
+  return (
+    <div className="container mx-auto px-4">
+      {/* Titles */}
+      <div className="text-center mt-12">
+        <h1 className="text-xl font-semibold">LiveGPT</h1>
+        <h3 className="text-md text-slate-700	">ChatGPT with eyes and ears</h3>
+      </div>
+      {/* Video feed */}
+      <div className="mt-8 flex flex-col items-center">
+        <Webcam
+          style={{ borderRadius: 16 }}
+          ref={webcamRef}
+          mirrored={false}
+          videoConstraints={{
+            facingMode: 'user',
+            // aspectRatio: 0.5625,
+          }}
+        />
+        {/* Toggle audio */}
+        <div className="mt-4">
+          {listening ? (
+            <button
+              type="button"
+              className="focus:outline-none text-white bg-yellow-400 hover:bg-yellow-500 focus:ring-4 focus:ring-yellow-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:focus:ring-yellow-900"
+              onClick={() => {
+                SpeechRecognition.stopListening();
+                sendImagesToServer();
+              }}
+            >
+              Stop recording
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+              onClick={() => {
+                SpeechRecognition.startListening({ continuous: true });
+              }}
+            >
+              Record audio
+            </button>
+          )}
+          <p>{transcript}</p>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="m-12 text-center">
