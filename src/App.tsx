@@ -319,7 +319,7 @@ function App() {
               {/* List of messages */}
               <div 
                 ref={chatHistoryHtmlContainerRef}
-                className='max-h-[calc(100dvh-30rem)] lg:max-h-[calc(100dvh-10rem)] overflow-y-auto p-3'>
+                className='max-h-[calc(100svh-30rem)] lg:max-h-[calc(100svh-10rem)] overflow-y-auto p-3'>
                 {constructMessages(chatHistory)}
 
               </div>
