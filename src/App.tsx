@@ -183,6 +183,9 @@ function App() {
       console.log(response);
     } catch (error) {
       console.error('Error sending images to server:', error);
+      alert("Your OpenAI key is invalid. Please enter a valid key.");
+      setOaiKey(undefined);
+      localStorage.removeItem('openai-key');
     }
   };
 
