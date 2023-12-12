@@ -44,6 +44,11 @@ function App() {
   );
   const [textInput, setTextInput] = useState<string>('');
   const chatHistoryHtmlContainerRef = useRef<HTMLDivElement>(null);
+  const videoConstraints = {
+    facingMode: {
+      exact: 'environment',
+    }
+  }
 
   useEffect(() => {
     beginCaptures();
@@ -305,10 +310,7 @@ function App() {
               className='max-h-72 lg:max-h-full'
               ref={webcamRef}
               mirrored={false}
-              videoConstraints={{
-                facingMode: 'user',
-                // aspectRatio: 0.5625,
-              }}
+              videoConstraints={videoConstraints}
             />
 
         </div>
@@ -317,7 +319,7 @@ function App() {
               {/* List of messages */}
               <div 
                 ref={chatHistoryHtmlContainerRef}
-                className='max-h-[calc(100vh-30rem)] lg:max-h-[calc(100vh-10rem)] overflow-y-auto p-3'>
+                className='max-h-[calc(100dvh-30rem)] lg:max-h-[calc(100dvh-10rem)] overflow-y-auto p-3'>
                 {constructMessages(chatHistory)}
 
               </div>
