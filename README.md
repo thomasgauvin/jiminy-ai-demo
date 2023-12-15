@@ -15,6 +15,7 @@ Try it out (bring your own OpenAI key): [https://jiminy-ai.appsinprogress.com/](
 https://github.com/thomasgauvin/jiminy-ai-demo/assets/35609369/7bcbc005-bb77-4dcf-b4f2-308efe95cde8
 
 (Full resolution on [YouTube](https://www.youtube.com/watch?v=gm2a7KFzJW8))
+
 In the above demo, we demonstrate:
 1. Yellow duck walking up a road and needing to decide which path to take at an intersection.
 2. Identifying the "fun" rollercoaster.
