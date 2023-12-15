@@ -1,11 +1,11 @@
 # Jiminy AI demo 
 
-Recreates the [Gemini's Hands-on demo](https://www.youtube.com/watch?v=UIZAiXYceBI) using OpenAI's GPT4 model.
+Inspired by [Gemini's Hands-on demo](https://www.youtube.com/watch?v=UIZAiXYceBI), we created a hands-on demo multi-modal interaction with OpenAI's GPT4 model.
 
 Try it out (bring your own OpenAI key): [https://jiminy-ai.appsinprogress.com/](https://jiminy-ai.appsinprogress.com/)
 
 ## How it works:
-* Uses GPT4's multimodal capabilties to replicate Gemini demo
+* Uses GPT4's multimodal capabilties for the hands-on demo 
 * Uses browser's Web Speech API for voice input
 * Passes video frames as images and transcribed input to GPT4
 * OpenAI text-to-speech API to read aloud the response
