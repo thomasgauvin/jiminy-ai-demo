@@ -3,9 +3,7 @@ import Webcam from 'react-webcam';
 import './App.css';
 import OpenAI from 'openai';
 import 'regenerator-runtime/runtime';
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from 'react-speech-recognition';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 
 const OAI_INITIAL_SYSTEM_PROMPT = {
   role: 'system',
@@ -28,15 +26,20 @@ function App() {
   const webcamRef = useRef(null);
   const captureRef = useRef();
   const chatHistoryHtmlContainerRef = useRef(null);
-  const [oaiKey, setOaiKey] = useState(
-    localStorage.getItem('openai-key') || undefined,
-  );
+  const [oaiKey, setOaiKey] = useState(localStorage.getItem('openai-key') || undefined);
   const [chatHistory, setChatHistory] = useState([]);
-  const [videoFrames, setVideoFrames] = useState([]);
+  const [videoFrames, setVideoFrames] = useState([]); //we store the last 10 seconds of frames, 2fps
   const [textInput, setTextInput] = useState('');
   const [deviceId, setDeviceId] = useState({});
   const [devices, setDevices] = useState([]);
   const [loadingOAIResponse, setLoadingOAIResponse] = useState(false);
+
+  //custom hooks
+  const handleDevices = useCallback(
+    mediaDevices =>
+      setDevices(mediaDevices.filter(({ kind }) => kind === 'videoinput')),
+    [setDevices],
+  );
   const {
     transcript,
     listening,
@@ -44,6 +47,14 @@ function App() {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
+  if (!browserSupportsSpeechRecognition) {
+    alert(
+      "Your browser doesn't support speech recognition. Please try another browser.",
+    );
+  }
+
+  //use effects
+  //prompt for openai key
   useEffect(() => {
     if (!oaiKey) {
       const key = prompt('Please enter your OpenAI key');
@@ -54,25 +65,22 @@ function App() {
     }
   }, []);
 
-  const handleDevices = useCallback(
-    mediaDevices =>
-      setDevices(mediaDevices.filter(({ kind }) => kind === 'videoinput')),
-    [setDevices],
-  );
-
+  //get devices
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then(handleDevices);
   }, [handleDevices]);
 
-  if (!browserSupportsSpeechRecognition) {
-    alert(
-      "Your browser doesn't support speech recognition. Please try another browser.",
-    );
-  }
-
   useEffect(() => {
     setTextInput(transcript);
   }, [transcript]);
+
+  // Scroll to the bottom of the messages container when a new message is added
+  useEffect(() => {
+    if (chatHistoryHtmlContainerRef.current) {
+      chatHistoryHtmlContainerRef.current.scrollTop =
+        chatHistoryHtmlContainerRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
 
   const capture = () => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -98,6 +106,10 @@ function App() {
 
   const stopCaptures = () => {
     clearInterval(captureRef.current);
+  };
+
+  const clearCaptures = () => {
+    setVideoFrames([]);
   };
 
   const sendImagesToServer = async () => {
@@ -210,18 +222,6 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    // Scroll to the bottom of the messages container
-    if (chatHistoryHtmlContainerRef.current) {
-      chatHistoryHtmlContainerRef.current.scrollTop =
-        chatHistoryHtmlContainerRef.current.scrollHeight;
-    }
-  }, [chatHistory]);
-
-  function clearCaptures(){
-    setVideoFrames([]);
-  }
-
   function constructMessages(messages) {
     return messages.map(message => {
       switch (message.role) {
@@ -305,11 +305,11 @@ function App() {
           <h3 className="text-md text-slate-200	">AI with eyes and ears</h3>
         </div>
       </div>
-      {/* Video feed */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col lg:flex-row">
         <div
           id="webcam"
-          className="bg-gray-200 p-4 flex flex-col items-center justify-center"
+          className="bg-gray-200 p-4 flex flex-col items-center justify-center lg:w-1/2"
         >
           <Webcam
             style={{ borderRadius: 16 }}
@@ -365,7 +365,7 @@ function App() {
             </select>
           )}
         </div>
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 lg:w-1/2">
           <div id="chat" className="bg-gray-300 h-full relative">
             {/* List of messages */}
             <div
@@ -435,3 +435,4 @@ function App() {
 }
 
 export default App;
+
