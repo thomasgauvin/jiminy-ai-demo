@@ -14,13 +14,14 @@ Try it out (bring your own OpenAI key): [https://jiminy-ai.appsinprogress.com/](
 
 https://github.com/thomasgauvin/jiminy-ai-demo/assets/35609369/7bcbc005-bb77-4dcf-b4f2-308efe95cde8
 
-(Full resolution on [YouTube](https://www.youtube.com/watch?v=gm2a7KFzJW8))
-
 In the above demo, we demonstrate:
 1. Yellow duck walking up a road and needing to decide which path to take at an intersection.
 2. Identifying the "fun" rollercoaster.
 3. Recognizing and correcting a drawing of planets.
 4. Recognizing a video clip from the 2008 Olympics, and correctly identifying the winning athlete & time to finish.
+
+(Full resolution on [YouTube](https://www.youtube.com/watch?v=gm2a7KFzJW8))
+
 
 ## Key learnings:
 * GPT4 can handle video input as video frames and recognize the progression of the sequence
