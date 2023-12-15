@@ -1,6 +1,6 @@
 # Jiminy AI demo 
 
-Recreates the [Google Gemini Hands-on demo](https://www.youtube.com/watch?v=UIZAiXYceBI) using OpenAI's GPT4 model.
+Recreates the [Gemini's Hands-on demo](https://www.youtube.com/watch?v=UIZAiXYceBI) using OpenAI's GPT4 model.
 
 Try it out (bring your own OpenAI key): [https://jiminy-ai.appsinprogress.com/](https://jiminy-ai.appsinprogress.com/)
 
